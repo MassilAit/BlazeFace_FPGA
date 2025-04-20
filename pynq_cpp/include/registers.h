@@ -8,6 +8,7 @@
 #define RELU_BASE_ADDR 0x40000000
 #define DW_BASE_ADDR 0x40010000
 #define PW_BASE_ADDR 0x40020000
+#define FULL_BASE_ADDR 0x40030000
 
 #define CTRL_MAP_SIZE 0x10000
 
@@ -57,6 +58,28 @@
 #define Y_ZERO_PW 0x70
 #define MUL_PW 0x78
 #define SHIFT_PW 0x80
+
+
+// FUll Offsets
+#define AP_CTRL_F 0x00
+#define IN_LO_F 0x10
+#define IN_HI_F 0x14
+#define W_LO_F 0x1C
+#define W_HI_F 0x20
+#define B_LO_F 0x28
+#define B_HI_F 0x2C
+#define OUT_LO_F 0x34
+#define OUT_HI_F 0x38
+#define IN_SIZE_F 0x40
+#define OUT_SIZE_F 0x48
+#define CIN_F 0x50
+#define COUT_F 0x58
+#define STRIDE_F 0x60
+#define X_ZERO_F 0x68
+#define Y_ZERO_F 0x70
+#define MUL_F 0x78
+#define SHIFT_F 0x80
+
 
 // ---------------------------
 // DDR Addresses

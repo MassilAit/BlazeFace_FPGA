@@ -140,7 +140,15 @@ std::vector<std::vector<std::vector<uint8_t>>> Conv2D::forward(
 
     if (!depthwise)
     {
-        run_pw_conv_accel(map, padded_input, weights_4d, biases, output, stride, x_scale, w_scale, y_scale, x_zero, y_zero);
+        if (kernel_size == 1)
+        {
+            run_pw_conv_accel(map, padded_input, weights_4d, biases, output, stride, x_scale, w_scale, y_scale, x_zero, y_zero);
+        }
+
+        else
+        {
+            run_pw_conv_accel(map, padded_input, weights_4d, biases, output, stride, x_scale, w_scale, y_scale, x_zero, y_zero);
+        }
     }
     else
     {

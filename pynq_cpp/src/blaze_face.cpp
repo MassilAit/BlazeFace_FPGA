@@ -257,7 +257,7 @@ std::vector<std::vector<std::vector<uint8_t>>> BlazeFace::forward(
     // Apply manual padding
     auto x_uint = pad(input, 1, 2, 1, 2, 0, 0, 0);
 
-    x_uint = input_conv.forward(x_uint, zero_x, scale_x);
+    x_uint = input_conv.forward(x_uint, zero_x, scale_x, map);
 
     x_uint = relu(x_uint, input_conv.y_zero, map);
 
@@ -305,7 +305,7 @@ std::vector<std::vector<std::vector<uint8_t>>> BlazeFace::forward(
     auto r2_2 = permute(r2_1);                                                      //  (8, 8, 96)
     auto r2 = reshape(r2_2, 16);                                                    //  (384, 16)
 
-    auto r = concatenate(r1, r2);  //(896, 16)
+    auto r = concatenate(r1, r2); //(896, 16)
 
     return {r, c};
 }

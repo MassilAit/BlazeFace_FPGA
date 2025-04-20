@@ -145,6 +145,132 @@ void run_pw_conv_accel(const MemMap &mem,
     }
 }
 
+void start_full_conv(const MemMap &mem, int input_size, int output_size, int Cin, int Cout, int stride, uint8_t x_zero, uint8_t y_zero, int32_t M, int32_t shift)
+{
+    volatile uint32_t *reg = mem.ctrl_pw;
+
+    // Write input address
+    uint64_t in_phys = IN_DDR_ADDR;
+    reg[IN_LO_F / 4] = (uint32_t)(in_phys & 0xFFFFFFFF);
+    reg[IN_HI_F / 4] = (uint32_t)(in_phys >> 32);
+
+    // Weights
+    uint64_t w_phys = WEIGHT_DDR_ADDR;
+    reg[W_LO_F / 4] = (uint32_t)(w_phys & 0xFFFFFFFF);
+    reg[W_HI_F / 4] = (uint32_t)(w_phys >> 32);
+
+    // Biases
+    uint64_t b_phys = BIAS_DDR_ADDR;
+    reg[B_LO_F / 4] = (uint32_t)(b_phys & 0xFFFFFFFF);
+    reg[B_HI_F / 4] = (uint32_t)(b_phys >> 32);
+
+    // Output
+    uint64_t out_phys = OUT_DDR_ADDR;
+    reg[OUT_LO_F / 4] = (uint32_t)(out_phys & 0xFFFFFFFF);
+    reg[OUT_HI_F / 4] = (uint32_t)(out_phys >> 32);
+
+    // Params
+    reg[IN_SIZE_F / 4] = input_size;
+    reg[OUT_SIZE_F / 4] = output_size;
+    reg[CIN_F / 4] = Cin;
+    reg[COUT_F / 4] = Cout;
+    reg[STRIDE_F / 4] = stride;
+    reg[X_ZERO_F / 4] = x_zero;
+    reg[Y_ZERO_F / 4] = y_zero;
+    reg[MUL_F / 4] = M;
+    reg[SHIFT_F / 4] = shift;
+
+    while ((reg[AP_CTRL_F / 4] & 0x4) == 0) /* spin */
+        ;                                   // bit‑2 = ap_idle
+
+    // Start accelerator
+    reg[AP_CTRL_F / 4] = 0x01;
+
+    // Wait for completion
+    while ((reg[AP_CTRL_F / 4] & 0x2) == 0)
+        ;
+}
+
+void run_full_conv_accel(const MemMap &mem,
+                         const std::vector<std::vector<std::vector<uint8_t>>> &input,
+                         const std::vector<std::vector<std::vector<std::vector<int8_t>>>> &weights,
+                         const std::vector<int32_t> &biases,
+                         std::vector<std::vector<std::vector<uint8_t>>> &output,
+                         int stride,
+                         float x_scale,
+                         float w_scale,
+                         float y_scale,
+                         uint8_t x_zero,
+                         uint8_t y_zero)
+{
+    int Cin = input.size();
+    int Cout = weights.size();
+    int size = input[0].size(); // assume square input
+    int kernel_size = weights[0][0].size();
+    int OH = (size - kernel_size) / stride + 1;
+
+    // Compute fixed-point multiplier and shift
+    int32_t M, shift_val;
+    double real_multiplier = (x_scale * w_scale) / y_scale;
+    QuantizeMultiplier(real_multiplier, M, shift_val);
+
+    // Flatten input
+    for (int c = 0; c < Cin; ++c)
+    {
+        for (int i = 0; i < size; ++i)
+        {
+            for (int j = 0; j < size; ++j)
+            {
+                mem.in[c * size * size + i * size + j] = input[c][i][j];
+            }
+        }
+    }
+
+    // Zero out output
+    for (int i = 0; i < Cout * OH * OH; ++i)
+    {
+        mem.out[i] = 10;
+    }
+
+    // Flatten weights
+    for (int co = 0; co < Cout; ++co)
+    {
+        for (int c = 0; c < Cin; ++c)
+        {
+            for (int i = 0; i < kernel_size; ++i)
+            {
+                for (int j = 0; j < kernel_size; ++j)
+                {
+                    mem.weights[co * Cin * kernel_size * kernel_size + c * kernel_size * kernel_size + i * kernel_size + j] = weights[co][c][i][j];
+                }
+            }
+        }
+    }
+
+    // Copy biases
+    for (int i = 0; i < Cout; ++i)
+    {
+        mem.bias[i] = biases[i];
+    }
+
+    // Launch the accelerator
+
+    start_full_conv(mem, size, OH, Cin, Cout, stride, x_zero, y_zero, M, shift_val);
+
+    // Copy back output
+    output.resize(Cout, std::vector<std::vector<uint8_t>>(OH, std::vector<uint8_t>(OH)));
+    for (int c = 0; c < Cout; ++c)
+    {
+        for (int i = 0; i < OH; ++i)
+        {
+            for (int j = 0; j < OH; ++j)
+            {
+                output[c][i][j] = mem.out[c * OH * OH + i * OH + j];
+            }
+        }
+    }
+}
+
 void start_relu_accelerator(const MemMap &mem, int size, uint8_t x_zero)
 {
     volatile uint32_t *reg = mem.ctrl_relu;
