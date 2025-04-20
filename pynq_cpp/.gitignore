@@ -1,0 +1,40 @@
+# CMake build folders
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Compiled object files, binaries, and libs
+*.o
+*.a
+*.so
+*.exe
+*.out
+*.elf
+*.bin
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Backup and temporary files
+*.log
+*.tmp
+*.bak
+
+# Python cache if mixed with py utils
+__pycache__/
+*.pyc
+
+# QT Creator and CLion extras
+*.user
+*.pro.user
+*.qbs.user
+*.creator.user
+
+# System files
+.DS_Store
+Thumbs.db
